@@ -28,6 +28,8 @@
 {"name": "option value names the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sort --output=../protected-share/out.txt notes.txt"}}}
 {"name": "upper-case path still matches", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat ../PROTECTED-SHARE/secret.txt"}}}
 {"name": "unparseable command fails closed", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat 'unterminated"}}}
+{"name": "eval string", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "eval 'cat ../protected-share/secret.txt'"}}}
+{"name": "process substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "diff notes.txt <(cat ../protected-share/secret.txt)"}}}
 {"name": "Read a safe file", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "{ROOT}/work/notes.txt"}}}
 {"name": "Write a doc that names the protected path", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": "{ROOT}/work/docs/guide.md", "content": "Never read {ROOT}/protected-share/secret.txt or SharedData."}}}
 {"name": "Edit with text that names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": {"file_path": "{ROOT}/work/notes.txt", "old_string": "token", "new_string": "see ../protected-share"}}}
