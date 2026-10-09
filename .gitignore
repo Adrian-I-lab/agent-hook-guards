@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local configuration that may name real paths or hosts
+config.local.json
+*.local.json
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
