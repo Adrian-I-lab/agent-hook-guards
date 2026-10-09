@@ -107,7 +107,7 @@ A tool call is blocked when any of these is true.
 
 1. A path operand resolves, after `realpath`, under a protected prefix. Symlinks and `..` are resolved first.
 2. A path operand has a component equal to a protected name.
-3. A glob operand could expand onto a protected path or name. Each wildcard component is compared with `fnmatch`, and `**` matches any depth.
+3. A glob operand could reach a protected prefix, compared part by part with `fnmatch` where `**` matches any depth. A glob is also expanded, and blocked if any result is protected by rule 1 or 2.
 4. A command that follows symlinks (`grep -R`, `find -L`, `find -follow`, `du -L`, `ls -L`, `tree -l`, `rg -L`, and similar) is aimed at a directory that holds a symlink into the protected area.
 5. A recursive command (`find`, `du`, `tree`, `rg`, `grep -r`, `ls -R`, `cp -r`, `rm -r`, and similar) is aimed at a directory that contains a protected prefix.
 

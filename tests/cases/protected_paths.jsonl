@@ -1,0 +1,51 @@
+// Protected-paths cases. {ROOT} is a temporary fixture; see tests/fixtures/protected_paths.py.
+{"name": "Read a protected file by absolute path", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "{ROOT}/protected-share/secret.txt"}}}
+{"name": "Read through the protected symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "{ROOT}/work/SharedData/secret.txt"}}}
+{"name": "Write into the protected area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": "{ROOT}/protected-share/new.txt", "content": "x"}}}
+{"name": "Edit a deep protected file via dot-dot", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": {"file_path": "{ROOT}/work/../protected-share/sub/deep.txt", "old_string": "a", "new_string": "b"}}}
+{"name": "NotebookEdit inside the protected area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "NotebookEdit", "tool_input": {"notebook_path": "{ROOT}/protected-share/n.ipynb", "new_source": "x"}}}
+{"name": "Glob pattern through the symlink name", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Glob", "tool_input": {"pattern": "Sha*/**", "path": "{ROOT}/work"}}}
+{"name": "Grep tool pointed at the protected area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Grep", "tool_input": {"pattern": "token", "path": "{ROOT}/protected-share"}}}
+{"name": "Grep tool on an ancestor of the protected area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Grep", "tool_input": {"pattern": "token", "path": "{ROOT}"}}}
+{"name": "cat via a relative path", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat ../protected-share/secret.txt"}}}
+{"name": "cat through the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat SharedData/secret.txt"}}}
+{"name": "output redirect into the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "echo hello > ../protected-share/new.txt"}}}
+{"name": "input redirect from the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "wc -l < ../protected-share/secret.txt"}}}
+{"name": "tee append into the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "date | tee -a ../protected-share/log.txt"}}}
+{"name": "glob that matches the symlink name", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls Sha*"}}}
+{"name": "glob that reaches the protected prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep token ../prot*/secret.txt"}}}
+{"name": "grep -R follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -R token ."}}}
+{"name": "grep -Rn cluster follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -Rn token ."}}}
+{"name": "find -L follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "find -L . -name '*.txt'"}}}
+{"name": "rg --follow follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "rg --follow token"}}}
+{"name": "du -L follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "du -sL ."}}}
+{"name": "find walks an ancestor after cd", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cd .. && find . -name '*.txt'"}}}
+{"name": "wrapper chain hides the command word", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "FOO=1 env -u BAR nice -n 5 cat ../protected-share/secret.txt"}}}
+{"name": "bash -c string", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "bash -c 'cat ../protected-share/secret.txt'"}}}
+{"name": "command substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "wc -l \"$(ls ../protected-share)\""}}}
+{"name": "heredoc fed to a shell", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "bash <<'EOF'\ncat ../protected-share/secret.txt\nEOF"}}}
+{"name": "copy into the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cp notes.txt ../protected-share/"}}}
+{"name": "option value names the area", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sort --output=../protected-share/out.txt notes.txt"}}}
+{"name": "upper-case path still matches", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat ../PROTECTED-SHARE/secret.txt"}}}
+{"name": "unparseable command fails closed", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat 'unterminated"}}}
+{"name": "Read a safe file", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "{ROOT}/work/notes.txt"}}}
+{"name": "Write a doc that names the protected path", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_input": {"file_path": "{ROOT}/work/docs/guide.md", "content": "Never read {ROOT}/protected-share/secret.txt or SharedData."}}}
+{"name": "Edit with text that names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": {"file_path": "{ROOT}/work/notes.txt", "old_string": "token", "new_string": "see ../protected-share"}}}
+{"name": "heredoc body names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat > docs/note.md <<'EOF'\nsee ../protected-share/secret.txt and SharedData\nEOF"}}}
+{"name": "grep -r does not follow the symlink", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -r token ."}}}
+{"name": "search pattern names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -rn 'protected-share' docs"}}}
+{"name": "search pattern is the symlink name", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -n SharedData notes.txt"}}}
+{"name": "echo names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "echo \"remember ../protected-share is off limits\""}}}
+{"name": "comment names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls -la # cat ../protected-share/secret.txt"}}}
+{"name": "find without -L in the working folder", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "find . -name '*.md'"}}}
+{"name": "find -name pattern is not a path", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "find docs -name 'Shared*'"}}}
+{"name": "du without -L in the working folder", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "du -sh ."}}}
+{"name": "Glob inside the docs folder", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Glob", "tool_input": {"pattern": "**/*.md", "path": "{ROOT}/work/docs"}}}
+{"name": "Grep tool pattern is the symlink name", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Grep", "tool_input": {"pattern": "SharedData", "path": "{ROOT}/work/docs"}}}
+{"name": "git commit message names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "git commit -m \"Document SharedData handling\""}}}
+{"name": "read a sibling outside the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat ../other/a.txt"}}}
+{"name": "glob that stays outside the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls ../other/*.txt"}}}
+{"name": "sed program is not a path", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sed -n '1,5p' safe-sibling.txt"}}}
+{"name": "printf text redirected to a safe file", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "printf '%s\\n' ../protected-share > list.txt"}}}
+{"name": "stderr redirect to /dev/null", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat notes.txt 2>/dev/null"}}}
+{"name": "non-PreToolUse event is ignored", "expect": "allow", "payload": {"hook_event_name": "PostToolUse", "tool_name": "Read", "tool_input": {"file_path": "{ROOT}/protected-share/secret.txt"}}}
