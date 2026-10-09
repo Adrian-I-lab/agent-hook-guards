@@ -1,0 +1,8 @@
+{
+  "protected_prefixes": [
+    "/mnt/protected-share"
+  ],
+  "protected_names": [
+    "SharedData"
+  ]
+}
