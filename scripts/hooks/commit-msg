@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Refuse a commit message that matches the private term list, a generic
+# secret pattern, a private IP address, or an absolute home path. Fails
+# closed. See scan-lib.sh.
+set -u
+
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scan-lib.sh
+. "$here/scan-lib.sh" || { echo "BLOCKED: cannot load scan-lib.sh (fail closed)" >&2; exit 1; }
+
+msg="${1:-}"
+if [ -z "$msg" ] || [ ! -r "$msg" ]; then
+  echo "BLOCKED: no readable commit message file (fail closed)" >&2
+  exit 1
+fi
+
+work="$(mktemp -d "${TMPDIR:-/tmp}/commitmsg.XXXXXX")" || { echo "BLOCKED: cannot create a temp dir (fail closed)" >&2; exit 1; }
+trap 'rm -rf "$work"' EXIT
+
+scan_load_terms "$work/terms" || exit 1
+
+# Git strips lines starting with # by default, so they are not scanned.
+grep -v '^#' "$msg" > "$work/content"
+awk '{ print "commit message:" NR }' "$work/content" > "$work/labels"
+
+scan_file "$work/content" "$work/labels" "$work/terms"
+
+if [ "$SCAN_FAILED" -ne 0 ]; then
+  echo "Commit refused. Reword the message. Do not bypass this hook." >&2
+  exit 1
+fi
+exit 0

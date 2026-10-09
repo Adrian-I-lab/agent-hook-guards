@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Refuse a commit whose staged added lines or staged file names match the
+# private term list, a generic secret pattern, a private IP address, or an
+# absolute home path. Fails closed. See scan-lib.sh.
+set -u
+
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scan-lib.sh
+. "$here/scan-lib.sh" || { echo "BLOCKED: cannot load scan-lib.sh (fail closed)" >&2; exit 1; }
+
+work="$(mktemp -d "${TMPDIR:-/tmp}/precommit.XXXXXX")" || { echo "BLOCKED: cannot create a temp dir (fail closed)" >&2; exit 1; }
+trap 'rm -rf "$work"' EXIT
+
+scan_load_terms "$work/terms" || exit 1
+
+: > "$work/content"
+: > "$work/labels"
+
+# Staged file names (added, copied, modified, renamed).
+git -c core.quotepath=off diff --cached --name-only --diff-filter=ACMR > "$work/names" || {
+  echo "BLOCKED: git diff failed (fail closed)" >&2; exit 1; }
+while IFS= read -r name; do
+  printf '%s\n' "$name" >> "$work/content"
+  printf '%s (file name)\n' "$name" >> "$work/labels"
+done < "$work/names"
+
+# Staged added lines, labelled path:line.
+git -c core.quotepath=off diff --cached --no-color --no-ext-diff --no-prefix -U0 --diff-filter=ACMR > "$work/diff" || {
+  echo "BLOCKED: git diff failed (fail closed)" >&2; exit 1; }
+awk -v C="$work/content" -v L="$work/labels" '
+  /^diff --git / { inhunk = 0; next }
+  !inhunk && /^\+\+\+ / { path = substr($0, 5); next }
+  /^@@ / {
+    inhunk = 1
+    split($3, a, ",")
+    n = substr(a[1], 2) + 0
+    next
+  }
+  inhunk && /^\+/ {
+    print substr($0, 2) >> C
+    print path ":" n >> L
+    n++
+    next
+  }
+' "$work/diff" || { echo "BLOCKED: diff parse failed (fail closed)" >&2; exit 1; }
+
+scan_file "$work/content" "$work/labels" "$work/terms"
+
+if [ "$SCAN_FAILED" -ne 0 ]; then
+  echo "Commit refused. Fix the content. Do not bypass this hook." >&2
+  exit 1
+fi
+exit 0
