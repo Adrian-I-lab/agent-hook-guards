@@ -87,13 +87,17 @@ scan_home_patterns() {
 PATTERNS
 }
 
-# _scan_report <rule-name> <grep -n output file> <label-file>
+# _scan_report <rule-name> <grep -n output file> <label-file> <terms-file>
 # Only the line number of each hit is used. The matched text is discarded.
+# A label that itself holds a listed term (a flagged file name) is hidden too.
 _scan_report() {
-  local rule="$1" hits="$2" labels="$3" line n label
+  local rule="$1" hits="$2" labels="$3" terms="$4" line n label
   while IFS= read -r line; do
     n="${line%%:*}"
     label="$(sed -n "${n}p" "$labels")"
+    if printf '%s\n' "$label" | grep -q -i -F -f "$terms"; then
+      label="line ${n} of the scan (its path is itself flagged, so it is not shown)"
+    fi
     scan_fail "${label}: matched rule '${rule}' (content not shown)"
   done < "$hits"
 }
@@ -109,23 +113,23 @@ scan_file() {
   hits="$(mktemp "${TMPDIR:-/tmp}/scanhit.XXXXXX")" || { rm -f "$pat"; scan_fail "cannot create a temp file"; return; }
 
   grep -n -i -F -f "$terms" "$content" > "$hits" 2>/dev/null
-  _scan_report "private term list" "$hits" "$labels"
+  _scan_report "private term list" "$hits" "$labels" "$terms"
 
   scan_secret_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
-  _scan_report "secret pattern" "$hits" "$labels"
+  _scan_report "secret pattern" "$hits" "$labels" "$terms"
 
   scan_assignment_patterns > "$pat"
   grep -n -E -i -f "$pat" "$content" > "$hits" 2>/dev/null
-  _scan_report "secret assignment" "$hits" "$labels"
+  _scan_report "secret assignment" "$hits" "$labels" "$terms"
 
   scan_ip_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
-  _scan_report "private IP address" "$hits" "$labels"
+  _scan_report "private IP address" "$hits" "$labels" "$terms"
 
   scan_home_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
-  _scan_report "absolute home path" "$hits" "$labels"
+  _scan_report "absolute home path" "$hits" "$labels" "$terms"
 
   rm -f "$pat" "$hits"
 }
