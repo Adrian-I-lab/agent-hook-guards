@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'G=/opt/agent-hook-guards; [ -f \"$G/agent_hook_guards/protected_paths.py\" ] || { echo \"agent-hook-guards: guard missing, refusing\" >&2; exit 2; }; PYTHONPATH=\"$G\" python3 -m agent_hook_guards.protected_paths; [ $? -eq 0 ] || exit 2'"
+          }
+        ]
+      }
+    ]
+  }
+}
