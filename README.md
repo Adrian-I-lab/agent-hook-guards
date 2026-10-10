@@ -380,7 +380,7 @@ CI runs the same command on Ubuntu and macOS with Python 3.9, 3.11, and 3.13.
 
 ## This repository's own hooks
 
-`scripts/hooks/` holds the pre-commit and commit-msg hooks used while developing this project. They scan for a private term list named by `$PORTFOLIO_DENYLIST`, generic secrets, private IP ranges, and absolute home paths, and they refuse every commit if the list is missing. Enable them with `git config core.hooksPath scripts/hooks`. They are kept separate from the shipped git guard, so the hygiene check never depends on the code it protects.
+`scripts/hooks/` holds the pre-commit and commit-msg hooks used while developing this project. They scan for a private term list named by `$PORTFOLIO_DENYLIST`, generic secrets, private IP ranges, and absolute home paths, and they refuse every commit if the list is missing. Enable them with `git config core.hooksPath scripts/hooks`. `scripts/audit-history.sh <revisions>` applies the same rules, plus author and committer addresses and blobs over 1 MiB, to every commit in a range before it is made public. It prints counts only. They are kept separate from the shipped git guard, so the hygiene check never depends on the code it protects.
 
 ## Licence
 
