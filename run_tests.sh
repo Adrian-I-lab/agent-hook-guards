@@ -6,6 +6,7 @@
 #   3. the git guard tests
 #   4. this repository's own hygiene hook tests
 #   5. the mutation check (the suite must be able to go red)
+#   6. the injection corpus validator and the held-out tripwire score
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -42,5 +43,9 @@ bash tests/test_repo_hooks.sh < /dev/null | tail -n 1
 
 step "mutation check"
 python3 tests/mutation_check.py < /dev/null
+
+step "injection corpus"
+python3 -m agent_hook_guards.injection_corpus validate corpus/injection | tail -n 2
+python3 -m agent_hook_guards.injection_corpus score corpus/injection --split test --markdown | sed -n '3,6p'
 
 printf '\nAll steps passed.\n'
