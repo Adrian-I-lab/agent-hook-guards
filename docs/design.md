@@ -8,7 +8,7 @@ A guard is a Claude Code `PreToolUse` command hook. Claude Code runs it before e
 
 ### Observed in a working local hook
 
-These points were observed in a working hook setup before this project was written. The live smoke test in the README re-checks them.
+These points were observed in a working hook setup before this project was written. The README's local wiring check re-checks the stdin and exit-code half by piping JSON through the shipped wrapper. A live Claude Code session check is described there but has not been recorded for this release.
 
 - The hook reads one JSON object on stdin. It has the keys `hook_event_name`, `tool_name`, and `tool_input`.
 - `tool_input` carries `command` for the Bash tool. File tools carry `file_path`, `path`, or `pattern`.
@@ -108,8 +108,10 @@ A tool call is blocked when any of these is true.
 1. A path operand resolves, after `realpath`, under a protected prefix. Symlinks and `..` are resolved first.
 2. A path operand has a component equal to a protected name.
 3. A glob operand could reach a protected prefix, compared part by part with `fnmatch` where `**` matches any depth. A glob is also expanded, and blocked if any result is protected by rule 1 or 2.
-4. A command that follows symlinks (`grep -R`, `find -L`, `find -follow`, `du -L`, `ls -L`, `tree -l`, `rg -L`, and similar) is aimed at a directory that holds a symlink into the protected area.
+4. A command that follows symlinks (`grep -R`, `find -L`, `find -follow`, `du -L`, `ls -L`, `tree -l`, `rg -L`, and similar) is aimed at a directory that holds a symlink into the protected area. The search has no depth cap. It stops after 20000 entries and then blocks.
 5. A recursive command (`find`, `du`, `tree`, `rg`, `grep -r`, `ls -R`, `cp -r`, `rm -r`, and similar) is aimed at a directory that contains a protected prefix.
+
+All comparisons are case-folded, because the default macOS filesystem ignores case. Rules 4 and 5, and the case folding, are the three choices most likely to block something harmless. The README lists them under Design choices.
 
 ## 6. Threat model
 
@@ -117,7 +119,7 @@ These guards are **coordination for a cooperative but fallible agent**. They are
 
 | Guard | Stops | Does not stop |
 |---|---|---|
-| protected_paths | File tools and shell commands whose path operands reach a protected area through symlinks, relative paths, redirects, globs, substitutions, or symlink-following flags | A script written to disk and then run; an interpreter that builds a path at run time; tools that do not pass through the hook; other processes; an agent that edits the hook config |
+| protected_paths | File tools and shell commands whose path operands reach a protected area through symlinks, relative paths, redirects, globs, substitutions, `sh -c` strings, symlink-following flags, or recursive walks | A script written to disk and then run; an interpreter that builds a path at run time; an obfuscated command; tools that do not pass through the hook; other processes; an agent that edits the hook config |
 | git guard | Secret-shaped strings and listed terms in staged lines, staged file names, and commit messages; pushes to remotes that are not listed | `git commit --no-verify`; secrets with no recognisable shape; anything already in history; a fresh clone where the hooks were never installed |
 
 ## 7. Test strategy
@@ -127,4 +129,4 @@ These guards are **coordination for a cooperative but fallible agent**. They are
 - **Mutation check.** Every case file is also run against two broken stand-ins, one that always allows and one that always blocks. Each stand-in must produce mismatches. If it does not, the suite measures nothing.
 - **Fixtures at run time.** Protected folders, symlinks, and configs are built in a temporary directory for each run.
 - **Literals at run time.** Fake secrets in tests are joined from parts, so the literal never sits in a tracked file.
-- **Interpreters.** Unit tests run on every Python found from 3.9 up. CI covers 3.9, 3.11, and 3.13 on Linux and macOS.
+- **Interpreters.** `run_tests.sh` runs the unit tests on `/usr/bin/python3` and on the first `python3` on `PATH`, when they differ. CI covers 3.9, 3.11, and 3.13 on Linux and macOS.

@@ -2,7 +2,19 @@
 
 Small, tested guards that stop an AI coding agent from touching protected paths, committing secrets, or pushing to the wrong remote. Every guard ships with cases that show it blocking a bad action and allowing a safe one, plus a mutation check that proves the tests can fail.
 
+> **Status: v0.1 prototype.** It works and is tested, but it is early, small, and has not been used widely. Expect rough edges and breaking changes.
+>
 > **Threat model in one line.** These guards are coordination for a cooperative but fallible agent. They are **not a sandbox** and **not a security boundary**. See [Threat model](#threat-model).
+
+## What v0.1 does not stop
+
+- A script written to disk and then run, or an interpreter that builds a path at run time (`python3 -c` with string joins).
+- Obfuscated commands, such as base64 or a variable set in an earlier call.
+- Anything that does not pass through the hook, such as other processes, other tools, or a fresh clone without the git hooks.
+- `git commit --no-verify`, secrets with no recognisable shape, and anything already in history.
+- An agent that edits the hook config or the Claude Code settings.
+
+The [Threat model](#threat-model) has the full table.
 
 ## Why
 
@@ -18,7 +30,7 @@ Git is the other common leak. An agent that is told "commit your work" will comm
 | `git-hooks/git-guard.sh` | pre-commit, commit-msg, and pre-push hooks. Blocks secret-shaped content and file names, optional private terms, and pushes to unlisted remotes. |
 | `agent_hook_guards/_hook.py`, `_config.py`, `_shell.py` | Shared runtime, config loader, and shell tokeniser. Standard library only. |
 
-Python 3.9 or later. No third-party packages. The git guard needs only bash, git, and grep.
+Python 3.9 or later. No third-party packages. The git guard needs bash 3.2 or later, git, and the standard `grep`, `sed`, `awk`, `tr`, and `mktemp`.
 
 ## Quick start
 
@@ -26,10 +38,10 @@ Python 3.9 or later. No third-party packages. The git guard needs only bash, git
 git clone <this repository> /opt/agent-hook-guards
 mkdir -p ~/.config/agent-hook-guards
 cp /opt/agent-hook-guards/examples/config.example.json ~/.config/agent-hook-guards/config.json
-# edit the config, then try it:
+# try it with the example config (exit 2 means blocked), then edit the config
 printf '%s' '{"tool_name":"Read","tool_input":{"file_path":"/mnt/protected-share/a.txt"}}' \
   | PYTHONPATH=/opt/agent-hook-guards python3 -m agent_hook_guards.protected_paths
-echo "exit $?"   # 2 means blocked
+echo "exit $?"
 ```
 
 `/opt/agent-hook-guards` is a placeholder. Use wherever you cloned the repository.
@@ -97,6 +109,25 @@ Hook contract the guards rely on:
 
 Lines marked [Likely] come from documentation, not from a live check. Re-check them against the current Claude Code docs. [`docs/design.md`](docs/design.md) has the details.
 
+### Local wiring check
+
+This feeds Claude Code shaped `PreToolUse` JSON through the exact command in `examples/settings.example.json`, in a throwaway folder. It does not start Claude Code. Set `G` to your clone.
+
+```sh
+G=/opt/agent-hook-guards
+S=$(mktemp -d); mkdir -p "$S/protected" "$S/safe"
+echo secret > "$S/protected/a.txt"; echo hello > "$S/safe/b.txt"; ln -s "$S/protected" "$S/link"
+printf '{"protected_prefixes":["%s/protected"],"protected_names":["link"]}\n' "$S" > "$S/guard.json"
+CMD=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["hooks"]["PreToolUse"][0]["hooks"][0]["command"].replace("/opt/agent-hook-guards", sys.argv[2]))' "$G/examples/settings.example.json" "$G")
+run() { printf '%s' "$1" | (cd "$S" && AGENT_GUARDS_CONFIG="$S/guard.json" sh -c "$CMD"); echo "exit $?"; }
+run "{\"hook_event_name\":\"PreToolUse\",\"cwd\":\"$S\",\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"$S/safe/b.txt\"}}"       # exit 0
+run "{\"hook_event_name\":\"PreToolUse\",\"cwd\":\"$S\",\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"$S/protected/a.txt\"}}"  # exit 2
+run "{\"hook_event_name\":\"PreToolUse\",\"cwd\":\"$S\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"cat link/a.txt\"}}"          # exit 2
+rm -rf "$S"
+```
+
+A live check is still worth doing once per machine. Put the same hook in `$S/.claude/settings.local.json` (with `AGENT_GUARDS_CONFIG=$S/guard.json` in front of the `python3` call), start `claude` in `$S`, and ask it to read `safe/b.txt`, read `protected/a.txt`, and run `cat link/a.txt`. Expect allow, block, block. This repository has not recorded such a live run yet.
+
 ### Installing the git guard
 
 ```sh
@@ -104,7 +135,7 @@ Lines marked [Likely] come from documentation, not from a live check. Re-check t
 git -C path/to/repo config --add agent-hook-guards.allowedRemote <exact push URL>
 ```
 
-The installer copies the guard into that repository's `.git/hooks`. It never overwrites an existing hook and never changes global git config. It refuses if `core.hooksPath` is set, because `.git/hooks` would then be ignored.
+The installer copies the guard into that repository's shared hooks folder (`.git/hooks`, also when run from a linked worktree). It never overwrites an existing hook and never changes global git config. It refuses if `core.hooksPath` is set, because `.git/hooks` would then be ignored. Hooks are per clone, so repeat it in every clone.
 
 ## What the protected-paths guard checks
 
@@ -128,7 +159,14 @@ Allowed, because it is authorship:
 - Search patterns, such as the first argument to `grep`, and `find -name` patterns.
 - `git commit -m` messages.
 
-Comparisons ignore case, because the default macOS filesystem does.
+### Design choices
+
+These are deliberate. Each one trades some convenience for fewer silent misses.
+
+- **Comparisons ignore case.** The default macOS filesystem ignores case, so a case-sensitive guard there could be bypassed by typing `PROTECTED-SHARE`. On a case-sensitive filesystem this may block a path that only differs in case.
+- **Recursive commands on an ancestor are blocked.** `find /`, or `du`, `grep -r`, or the Grep tool aimed at a parent folder of a protected prefix, would walk into it, so they are refused. Point the command at a narrower folder instead.
+- **`grep -R` over very large trees is refused.** Before a symlink-following command runs, the guard walks the target looking for symlinks into the protected area. It examines at most 20000 entries. Past that it blocks rather than guess. Use `grep -r`, which does not follow symlinks.
+- **Anything the tokeniser cannot read is blocked**, for example an unterminated quote, and so is a command nested more than 8 levels deep.
 
 ## Threat model
 
@@ -149,15 +187,24 @@ Run everything with:
 bash run_tests.sh
 ```
 
-It stops at the first failing step. Measured output of that command on Linux with Python 3.13:
+It stops at the first failing step. It runs the unit tests on `/usr/bin/python3` and on the first `python3` on `PATH`, and the remaining steps on `python3`.
+
+Measured on macOS on 2026-10-10, once with Anaconda Python 3.13.5 first on `PATH` and once with the stock Python 3.9.6 at `/usr/bin/python3` only. Both runs gave the same counts.
 
 | Step | Result |
 |---|---|
 | unittest | 49 tests, OK |
-| protected_paths case file | `cases=52 blocked_ok=31 allowed_ok=21 mismatches=0` |
-| git guard tests | `block_ok=19 allow_ok=15 failures=0`, including six innocent hyphenated words such as `risk-assessment` |
-| repository hygiene hook tests | `block_ok=10 allow_ok=3 failures=0` |
-| mutation check | 86 cases, real guards 0 mismatches, always-allow stand-ins 31 and 16 mismatches, always-block stand-ins 21 and 13 mismatches |
+| protected_paths case file | `cases=54 blocked_ok=32 allowed_ok=22 mismatches=0` |
+| git guard tests | `block_ok=22 allow_ok=16 failures=0`, including six innocent hyphenated words such as `risk-assessment` |
+| repository hygiene hook tests | `block_ok=11 allow_ok=3 failures=0` |
+| mutation check | 92 cases, every stand-in caught (table below) |
+
+| guard | cases | real guard mismatches | always-allow mismatches | always-block mismatches |
+|---|---|---|---|---|
+| protected_paths | 54 | 0 | 32 | 22 |
+| git_guard | 38 | 0 | 18 | 13 |
+
+The git guard stand-ins skip the seven installer and real-commit cases, so their mismatch counts cover the 31 direct cases only.
 
 How the tests are built:
 
@@ -173,7 +220,8 @@ CI runs the same command on Ubuntu and macOS with Python 3.9, 3.11, and 3.13.
 
 - The shell tokeniser is deliberately small. It handles the common shapes above, not every bash feature. Anything it cannot parse is blocked.
 - Variables are expanded from the hook's own environment, which may differ from the shell the agent runs.
-- A symlink-following walk stops after a fixed number of entries and then blocks, so `grep -R` over a very large tree is refused. Use `grep -r`.
+- A symlink-following walk stops after 20000 entries and then blocks, so `grep -R` over a very large tree is refused. Use `grep -r`.
+- A glob is expanded to at most 5000 paths. Past that it blocks.
 - The git guard's secret patterns are high-confidence signatures with fixed prefixes. A secret with no known prefix will pass.
 
 ## This repository's own hooks
