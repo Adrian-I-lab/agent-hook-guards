@@ -10,6 +10,8 @@ Builds, inside a fresh temporary directory ROOT:
     ROOT/work/safe-sibling.txt
     ROOT/work/docs/readme.md
     ROOT/work/SharedData -> ROOT/protected-share   (symlink into the area)
+    ROOT/work/deep/l1/.../l9/way-in -> ROOT/protected-share
+                                    (a symlink nine levels down, unnamed)
     ROOT/other/a.txt                unrelated files outside the area
 
 and returns the guard config. Case files refer to ROOT as {ROOT}.
@@ -32,6 +34,9 @@ def build(root):
     write("work/docs/readme.md", "# readme\n")
     write("other/a.txt", "hello\n")
     os.symlink(os.path.join(root, "protected-share"), os.path.join(root, "work", "SharedData"))
+    deep = os.path.join(root, "work", "deep", *["l{}".format(i) for i in range(1, 10)])
+    os.makedirs(deep)
+    os.symlink(os.path.join(root, "protected-share"), os.path.join(deep, "way-in"))
     return {
         "protected_prefixes": [os.path.join(root, "protected-share")],
         "protected_names": ["SharedData"],

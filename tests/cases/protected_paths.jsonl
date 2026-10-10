@@ -19,6 +19,7 @@
 {"name": "find -L follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "find -L . -name '*.txt'"}}}
 {"name": "rg --follow follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "rg --follow token"}}}
 {"name": "du -L follows the symlink", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "du -sL ."}}}
+{"name": "grep -R finds a symlink nine levels down", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -R token deep"}}}
 {"name": "find walks an ancestor after cd", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cd .. && find . -name '*.txt'"}}}
 {"name": "wrapper chain hides the command word", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "FOO=1 env -u BAR nice -n 5 cat ../protected-share/secret.txt"}}}
 {"name": "bash -c string", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "bash -c 'cat ../protected-share/secret.txt'"}}}
@@ -35,6 +36,7 @@
 {"name": "Edit with text that names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Edit", "tool_input": {"file_path": "{ROOT}/work/notes.txt", "old_string": "token", "new_string": "see ../protected-share"}}}
 {"name": "heredoc body names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "cat > docs/note.md <<'EOF'\nsee ../protected-share/secret.txt and SharedData\nEOF"}}}
 {"name": "grep -r does not follow the symlink", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -r token ."}}}
+{"name": "grep -R in a folder with no symlink", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -R readme docs"}}}
 {"name": "search pattern names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -rn 'protected-share' docs"}}}
 {"name": "search pattern is the symlink name", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -n SharedData notes.txt"}}}
 {"name": "echo names the area", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "echo \"remember ../protected-share is off limits\""}}}

@@ -32,7 +32,6 @@ GUARD = "protected_paths"
 MAX_DEPTH = 8  # nested substitutions and sh -c strings
 GLOB_LIMIT = 5000  # glob results examined before giving up (fail closed)
 WALK_LIMIT = 20000  # directory entries examined for symlinks before giving up
-WALK_DEPTH = 6
 
 PATH_KEYS = ("file_path", "notebook_path", "path")
 LIST_KEYS = ("paths", "file_paths")
@@ -243,11 +242,10 @@ def _holds_protected_symlink(path, cwd, settings):
     root = os.path.normpath(os.path.join(cwd, expanded))
     if not os.path.isdir(root):
         return False
+    # No depth cap: a cap would let a symlink just below it through. The
+    # entry limit alone bounds the walk, and hitting it blocks.
     seen = 0
-    base_depth = root.rstrip(os.sep).count(os.sep)
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        if dirpath.count(os.sep) - base_depth >= WALK_DEPTH:
-            dirnames[:] = []
         for entry in dirnames + filenames:
             seen += 1
             if seen > WALK_LIMIT:
