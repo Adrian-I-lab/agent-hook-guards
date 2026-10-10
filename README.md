@@ -2,7 +2,7 @@
 
 Small, tested guards and examples for AI coding agents. They stop an agent touching protected paths, writing to a read-only remote host, committing secrets, or pushing to the wrong remote, and they include a labelled prompt-injection corpus with a simple tripwire. Every guard ships with cases that show it blocking a bad action and allowing a safe one, plus a mutation check that proves the tests can fail.
 
-> **Status.** The v0.1 guards (protected paths, git guard) are the stable core: tested, but early and not widely used. The v0.2 read-only remote guard and the v0.3 injection corpus, tripwire, and embedding map are **prototypes** on a development branch. Expect rough edges and breaking changes in all of it.
+> **Status.** The v0.1 guards (protected paths, git guard) are the stable core: tested, but early and not widely used. The v0.2 read-only remote guard and the v0.3 injection corpus, tripwire, and embedding map are **prototypes**, included from version 0.3.0. Expect rough edges and breaking changes in all of it.
 >
 > **Threat model in one line.** These guards are coordination for a cooperative but fallible agent. They are **not a sandbox** and **not a security boundary**. See [Threat model](#threat-model).
 
