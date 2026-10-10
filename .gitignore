@@ -20,3 +20,6 @@ config.local.json
 .idea/
 .vscode/
 *.swp
+
+# Generated results from examples (embeddings, figures)
+examples/injection_map/out/
