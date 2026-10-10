@@ -98,6 +98,9 @@ These are access, and are checked:
 | `agent_hook_guards/_config.py` | Finds, loads, and validates the JSON config. |
 | `agent_hook_guards/_shell.py` | Tokeniser. Strips heredoc bodies and comments, splits segments, finds the command word, extracts redirects and substitutions. |
 | `agent_hook_guards/protected_paths.py` | The protected-paths guard. |
+| `agent_hook_guards/readonly_remote.py` | The read-only remote guard (v0.2 prototype). |
+| `agent_hook_guards/injection_corpus.py` | Corpus loader, validator, seeded split, and scorer (v0.3 prototype). |
+| `agent_hook_guards/injection_tripwire.py` | The injection tripwire (v0.3 prototype). Flags, never blocks. |
 | `git-hooks/git-guard.sh` | The git guard. Pure bash, git, and grep. |
 | `git-hooks/install.sh` | Installs the git guard into one repository's hooks folder. |
 
@@ -113,6 +116,34 @@ A tool call is blocked when any of these is true.
 
 All comparisons are case-folded, because the default macOS filesystem ignores case. Rules 4 and 5, and the case folding, are the three choices most likely to block something harmless. The README lists them under Design choices.
 
+### Read-only remote rules (v0.2 prototype)
+
+Config lives in the `readonly_remote` object of the same JSON file. `hosts` is required. A missing or invalid section blocks every tool call this hook sees (fail closed), so register this hook only where the section exists.
+
+For each local segment, past wrappers and inside substitutions, `sh -c` strings, `eval`, and heredocs fed to a shell:
+
+1. `ssh` to a configured host. Options are parsed before and after the destination, as OpenSSH does. Any option outside the allowed set blocks. No remote command blocks. Otherwise the remote arguments are joined with spaces, exactly as ssh sends them, and parsed again with the shared tokeniser.
+2. `ssh` to another host is allowed, unless an option value (`-J`, `-o HostName=`, `-o ProxyJump=`) names a configured host.
+3. A copy or ssh-based tool (`scp`, `rsync`, `sftp`, `sshfs`, `mosh`, `lftp`, `autossh`) naming a configured host blocks. For other commands, an operand of the form `host:path` or `scheme://host` on a configured host blocks. A bare host name in text, a search pattern, or `echo` is mention, not access.
+
+For each remote segment:
+
+1. Substitutions and heredocs block. Redirects block unless the target is `/dev/null` or the redirect reads a file. Wrappers and `VAR=value` prefixes block.
+2. The command word must be on the read allowlist. A fixed set of shells, interpreters, editors, pagers, and writers can never be added by config.
+3. Per-command flag checks reject options that write, run a program, or never return.
+4. Symlink-following flags block, because remote symlinks cannot be inspected.
+5. Path operands are normalised lexically (`posixpath.normpath`), with `remote_home` for `~` and relative paths and `cd` tracked between segments. A path inside a forbidden prefix, a component equal to a forbidden name, or a glob that could reach either, blocks. A recursive command aimed at an ancestor of a forbidden prefix blocks, and one aimed at an unresolvable relative path blocks while forbidden prefixes are set.
+
+To read these segments the shared tokeniser now also records `VAR=value` words before the command word (`Segment.assignments`). Existing guards ignore the new attribute.
+
+### Injection tripwire (v0.3 prototype)
+
+- The corpus is data, not code. `injection_corpus validate` checks every field, label, technique, channel, duplicate, and the stored split against a seeded recomputation.
+- The tripwire builds several views of the text: the NFKC-normalised text, decoded base64, base32, hex, percent and HTML encodings, invisible Unicode tag characters, text with zero-width characters removed, look-alike letters mapped to Latin, rot13, reversed, and digit-for-letter text.
+- Rules are regular expressions grouped by technique. A strong rule flags. Two different weak rules together flag. A weak rule found in a view that exists only because the input carried an encoding counts as strong, because instruction-like text hidden in an encoding is suspicious in itself.
+- rot13, reversed, digit-for-letter, and look-alike views are computed for every input, so weak rules found there stay weak.
+- The rules were written on the train split and frozen in a commit before the single scoring run on the test split.
+
 ## 6. Threat model
 
 These guards are **coordination for a cooperative but fallible agent**. They are not a sandbox and not a security boundary.
@@ -121,6 +152,8 @@ These guards are **coordination for a cooperative but fallible agent**. They are
 |---|---|---|
 | protected_paths | File tools and shell commands whose path operands reach a protected area through symlinks, relative paths, redirects, globs, substitutions, `sh -c` strings, symlink-following flags, or recursive walks | A script written to disk and then run; an interpreter that builds a path at run time; an obfuscated command; tools that do not pass through the hook; other processes; an agent that edits the hook config |
 | git guard | Secret-shaped strings and listed terms in staged lines, staged file names, and commit messages; pushes to remotes that are not listed | `git commit --no-verify`; secrets with no recognisable shape; anything already in history; a fresh clone where the hooks were never installed |
+| readonly_remote (v0.2 prototype) | ssh to a configured host without an allowlisted read command; tunnels and alternate configs; copies; remote writes and forbidden paths | Unlisted ssh aliases; scripts or interpreters that open their own connection; a shared connection used outside the agent; harmful reads |
+| injection_tripwire (v0.3 prototype) | Nothing. It flags text for a closer look | Novel phrasings, other languages, single-signal injections |
 
 ## 7. Test strategy
 
