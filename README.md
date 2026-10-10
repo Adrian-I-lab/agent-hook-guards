@@ -308,6 +308,10 @@ Measured on macOS on 2026-10-10 with Ollama 0.40.2, `nomic-embed-text` (digest `
 
 A rerun of the UMAP map gave byte-identical coordinates on the same machine. Across machines or library versions it may not.
 
+![UMAP of the 203-item synthetic corpus. Left panel coloured by label (105 injections, 98 benign lookalikes). Right panel coloured by technique, circles for injections and crosses for benign lookalikes.](docs/img/injection_map_umap.png)
+
+The figure above is a committed copy of `examples/injection_map/out/injection_map_umap.png` from the run described in the table. Rerunning the script writes a fresh copy to `out/` and does not touch this one.
+
 What the map does and does not show:
 
 - Injections and hard negatives separate partly along PC1. A silhouette of 0.074 in 20-PC space is weak separation. The 2D values are higher because two dimensions discard most of the variance, so they flatter the picture.
