@@ -214,6 +214,12 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(seg.args, ["f"])
         self.assertEqual(seg.wrappers, ["env", "nice", "timeout", "sudo"])
 
+    def test_assignments_recorded(self):
+        seg = self.segments("A=1 env B=2 C=3 cat f")[0]
+        self.assertEqual(seg.command, "cat")
+        self.assertEqual(seg.assignments, ["A=1", "B=2", "C=3"])
+        self.assertEqual(self.segments("cat f")[0].assignments, [])
+
     def test_command_word_is_basename(self):
         self.assertEqual(self.segments("/bin/cat f")[0].command, "cat")
 

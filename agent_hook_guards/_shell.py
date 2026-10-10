@@ -65,11 +65,13 @@ class Heredoc(object):
 class Segment(object):
     """One simple command."""
 
-    def __init__(self, command, args, redirects, wrappers):
+    def __init__(self, command, args, redirects, wrappers, assignments=None):
         self.command = command  # basename of the real command word, or None
         self.args = args  # list of argument strings after the command word
         self.redirects = redirects  # list of (operator, target) pairs
         self.wrappers = wrappers  # wrapper command names that were skipped
+        # VAR=value words before the command word, including those after env
+        self.assignments = assignments if assignments is not None else []
 
     def __repr__(self):
         return "Segment(command={!r}, args={!r}, redirects={!r})".format(
@@ -312,21 +314,28 @@ def _parse_simple(tokens):
         i += 1
 
     wrappers = []
+    assignments = []
     j = 0
     while j < len(words) and (_ASSIGNMENT.match(words[j]) or words[j] in ("{", "}", "!")):
+        if _ASSIGNMENT.match(words[j]):
+            assignments.append(words[j])
         j += 1
     while j < len(words):
         name = os.path.basename(words[j])
         if name in _WRAPPERS:
             wrappers.append(name)
-            j = _skip_wrapper(name, words, j + 1)
+            start = j + 1
+            j = _skip_wrapper(name, words, start)
+            if name == "env":
+                assignments.extend(w for w in words[start:j] if _ASSIGNMENT.match(w))
             while j < len(words) and _ASSIGNMENT.match(words[j]):
+                assignments.append(words[j])
                 j += 1
             continue
         break
     if j >= len(words):
-        return Segment(None, [], redirects, wrappers)
-    return Segment(os.path.basename(words[j]), words[j + 1:], redirects, wrappers)
+        return Segment(None, [], redirects, wrappers, assignments)
+    return Segment(os.path.basename(words[j]), words[j + 1:], redirects, wrappers, assignments)
 
 
 def split_segments(command):
