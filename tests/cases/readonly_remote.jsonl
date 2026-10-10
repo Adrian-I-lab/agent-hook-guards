@@ -1,0 +1,89 @@
+// readonly_remote cases. Hosts are placeholders; see tests/fixtures/readonly_remote.py.
+{"name": "ssh with ls", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster ls -la /scratch/project"}}}
+{"name": "ssh with a pipeline of reads", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'grep -n ERROR /scratch/run1/job.log | tail -n 20'"}}}
+{"name": "ssh with find, no exec", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster find /scratch/project -name '*.out' -mtime -1"}}}
+{"name": "ssh to a pattern host with cat", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh login1.cluster.example cat /scratch/project/README.md"}}}
+{"name": "ssh with user@host and BatchMode", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -o BatchMode=yes agent@example-cluster head -n 5 /scratch/x.tsv"}}}
+{"name": "ssh with port and quiet flags", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -q -p 2222 -T example-cluster wc -l /scratch/x.tsv"}}}
+{"name": "ssh with a configured extra command", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster squeue -u agent"}}}
+{"name": "ssh with git log", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster git -C /scratch/repo log --oneline -5"}}}
+{"name": "ssh with git branch listing", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster git -C /scratch/repo branch -a"}}}
+{"name": "ssh with stderr to /dev/null", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'ls /scratch 2>/dev/null; du -sh /scratch/project 2>&1'"}}}
+{"name": "ssh with sort, no output file", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'sort -k2,2 -t, /scratch/a.csv | uniq -c'"}}}
+{"name": "ssh with cd then ls", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cd /scratch/project && ls'"}}}
+{"name": "ssh with grep -r on a narrow folder", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster grep -rn TODO /scratch/project/src"}}}
+{"name": "ssh with home-relative read", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster cat ~/notes/plan.txt"}}}
+{"name": "ssh to an unrelated host is not this guard's business", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh build.other.example make install"}}}
+{"name": "scp to an unrelated host", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "scp report.pdf backup.other.example:/srv/drop/"}}}
+{"name": "local command mentioning the host in text", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "echo 'ssh example-cluster rm -rf /scratch' >> notes.md"}}}
+{"name": "grep for the host name locally", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "grep -n example-cluster: ~/.ssh/known_hosts_notes"}}}
+{"name": "ssh -V prints the client version", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -V"}}}
+{"name": "Read tool is ignored by this guard", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": "/mnt/protected-share/a.txt"}}}
+{"name": "ssh with tail -n, not follow", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster tail -n 50 /scratch/run1/job.err"}}}
+{"name": "ssh with stat and df", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'stat /scratch/project && df -h /scratch'"}}}
+{"name": "ssh with the host given after options and a -- separator", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -o ConnectTimeout=5 -- example-cluster pwd"}}}
+{"name": "ssh with input redirect from an allowed path", "expect": "allow", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'wc -l < /scratch/a.txt'"}}}
+{"name": "bare ssh is an interactive shell", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster"}}}
+{"name": "bare ssh with user@host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh agent@login2.cluster.example"}}}
+{"name": "ssh local port forward", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -L 8888:localhost:8888 example-cluster ls"}}}
+{"name": "ssh dynamic proxy", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -D 1080 example-cluster ls"}}}
+{"name": "ssh with alternate config", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -F ./other_config example-cluster ls"}}}
+{"name": "ssh ProxyCommand option", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -o ProxyCommand=nc example-cluster ls"}}}
+{"name": "ssh forced tty", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -t example-cluster ls"}}}
+{"name": "ssh option after the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster -R 9000:localhost:22 ls"}}}
+{"name": "jump through a read-only host to another host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -J example-cluster node7.other.example ls"}}}
+{"name": "HostName option pointing an alias at the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh -o HostName=example-cluster innocent-alias ls"}}}
+{"name": "remote rm", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster rm -rf /scratch/project/old"}}}
+{"name": "second segment writes", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'ls /scratch; mv a b'"}}}
+{"name": "remote job submission is not allowlisted", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster sbatch job.sh"}}}
+{"name": "remote redirect to a file", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cat a.txt > b.txt'"}}}
+{"name": "remote append redirect", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'echo x >> /scratch/log'"}}}
+{"name": "remote command substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cat $(ls /scratch | head -1)'"}}}
+{"name": "remote backtick substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cat `ls`'"}}}
+{"name": "remote process substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'diff <(ls a) <(ls b)'"}}}
+{"name": "remote sudo", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster sudo ls /root"}}}
+{"name": "remote xargs", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'ls | xargs rm'"}}}
+{"name": "remote bash -c", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster bash -c 'ls'"}}}
+{"name": "remote nohup", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster nohup ls"}}}
+{"name": "remote env assignment prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'LD_PRELOAD=x.so ls'"}}}
+{"name": "remote find -exec", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster find /scratch -name '*.tmp' -exec rm {} +"}}}
+{"name": "remote find -delete", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster find /scratch -name '*.tmp' -delete"}}}
+{"name": "remote sort -o writes", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster sort -o out.txt in.txt"}}}
+{"name": "remote sort with clustered -o", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster sort -uo out.txt in.txt"}}}
+{"name": "remote sed is never allowed", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster sed -i s/a/b/ f.txt"}}}
+{"name": "remote git push", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster git -C /scratch/repo push"}}}
+{"name": "remote git branch delete", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster git branch -D old"}}}
+{"name": "remote git diff --output writes", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster git diff --output=x.patch"}}}
+{"name": "remote tail -f never returns", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster tail -f /scratch/job.log"}}}
+{"name": "remote python", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster python3 -c 'print(1)'"}}}
+{"name": "remote for loop", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'for f in *; do cat $f; done'"}}}
+{"name": "escaped substitution reaches the remote shell", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster cat \\$\\(rm x\\)"}}}
+{"name": "unquoted semicolon in an argument reaches the remote shell", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster grep 'a; rm -rf b' f"}}}
+{"name": "read inside a forbidden prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster cat /mnt/protected-share/a.txt"}}}
+{"name": "read through a forbidden symlink name", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster ls ~/SharedData/"}}}
+{"name": "dot-dot into a forbidden prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster cat /scratch/../mnt/protected-share/a.txt"}}}
+{"name": "glob that could expand onto a forbidden name", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster ls ~/Shared*"}}}
+{"name": "bare star glob could expand onto a forbidden name", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cd ~ && ls *'"}}}
+{"name": "home-relative forbidden prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster cat archive/2024.tar"}}}
+{"name": "cd into a forbidden prefix then read", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'cd /mnt && cat protected-share/a.txt'"}}}
+{"name": "grep -R follows symlinks", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster grep -R pattern /scratch"}}}
+{"name": "find -L follows symlinks", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster find -L /scratch -name x"}}}
+{"name": "du -L follows symlinks", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster du -L -sh /scratch"}}}
+{"name": "recursive find on an ancestor of a forbidden prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster find /mnt -name '*.txt'"}}}
+{"name": "recursive du on home walks into archive", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster du -sh ~"}}}
+{"name": "input redirect from a forbidden prefix", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'wc -l < /mnt/protected-share/a.txt'"}}}
+{"name": "scp from the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "scp example-cluster:/scratch/results.tsv ."}}}
+{"name": "scp to the host with user@", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "scp run.sh agent@login1.cluster.example:/scratch/"}}}
+{"name": "rsync to the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "rsync -av ./out/ example-cluster:/scratch/out/"}}}
+{"name": "rsync over ssh url", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "rsync -av ./out/ rsync://example-cluster/module/"}}}
+{"name": "sftp session", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sftp example-cluster"}}}
+{"name": "sshfs mount", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sshfs example-cluster:/scratch ./mnt"}}}
+{"name": "autossh to the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "autossh -M 0 example-cluster ls"}}}
+{"name": "git push to an ssh address on the host", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "git push example-cluster:/srv/repo.git main"}}}
+{"name": "ssh inside sh -c", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "sh -c 'ssh example-cluster rm -rf /scratch/x'"}}}
+{"name": "ssh inside a local substitution", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "echo $(ssh example-cluster rm x)"}}}
+{"name": "ssh inside eval", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "eval 'ssh example-cluster rm x'"}}}
+{"name": "ssh in a heredoc fed to bash", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "bash <<'EOF'\nssh example-cluster rm x\nEOF"}}}
+{"name": "ssh behind local wrappers", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "timeout 30 nice -n 5 ssh example-cluster rm x"}}}
+{"name": "unparseable command fails closed", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh example-cluster 'ls"}}}
+{"name": "host matching ignores case", "expect": "block", "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ssh EXAMPLE-CLUSTER rm x"}}}

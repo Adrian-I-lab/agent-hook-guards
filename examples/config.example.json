@@ -4,5 +4,22 @@
   ],
   "protected_names": [
     "SharedData"
-  ]
+  ],
+  "readonly_remote": {
+    "hosts": [
+      "example-cluster",
+      "*.cluster.example"
+    ],
+    "extra_read_commands": [
+      "squeue",
+      "sinfo"
+    ],
+    "forbidden_prefixes": [
+      "/mnt/protected-share"
+    ],
+    "forbidden_names": [
+      "SharedData"
+    ],
+    "remote_home": "/srv/agent"
+  }
 }

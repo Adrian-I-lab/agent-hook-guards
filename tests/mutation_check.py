@@ -29,6 +29,7 @@ import run_cases  # noqa: E402
 
 CASE_FILES = [
     ("protected_paths", os.path.join(HERE, "cases", "protected_paths.jsonl")),
+    ("readonly_remote", os.path.join(HERE, "cases", "readonly_remote.jsonl")),
 ]
 GIT_GUARD_TESTS = os.path.join(HERE, "test_git_guard.sh")
 
