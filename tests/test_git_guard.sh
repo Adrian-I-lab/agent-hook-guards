@@ -98,6 +98,15 @@ term_list="$scratch/terms.txt"
 printf '# synthetic private terms for tests\nexample-internal-codename\n' > "$term_list"
 codename="example-internal-""codename"
 
+# A grep that fails whenever it is asked for line numbers (-n), as the scan
+# does, and passes every other call to the real grep. It shows that a scan
+# that cannot run refuses instead of allowing.
+real_grep="$(command -v grep)"
+broken_bin="$scratch/broken-grep"
+mkdir -p "$broken_bin"
+printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = -n ] && exit 2; done\nexec "%s" "$@"\n' "$real_grep" > "$broken_bin/grep"
+chmod +x "$broken_bin/grep"
+
 echo "== pre-commit, must block"
 stage_case block "cloud access key id in a line" config.txt "key = $aws"
 stage_case block "VCS token in a line" notes.txt "token: $gh_token"
@@ -117,6 +126,9 @@ d="$(new_repo)"; git -C "$d" config agent-hook-guards.denylist "$scratch/missing
 printf 'clean\n' > "$d/doc.md"; git -C "$d" add doc.md
 (cd "$d" && bash "$guard" pre-commit) >/dev/null 2>&1; record block "configured denylist missing (fail closed)" $?
 
+d="$(new_repo)"; printf 'clean\n' > "$d/doc.md"; git -C "$d" add doc.md
+(cd "$d" && PATH="$broken_bin:$PATH" bash "$guard" pre-commit) >/dev/null 2>&1; record block "scan that cannot run (broken grep, fail closed)" $?
+
 echo "== pre-commit, must allow"
 stage_case allow "clean file" README.md "A small, clean readme."
 stage_case allow "public key file" .ssh/id_rsa.pub "ssh-ed25519 AAAA example"
@@ -132,6 +144,8 @@ printf 'nothing private\n' > "$d/doc.md"; git -C "$d" add doc.md
 echo "== commit-msg"
 msg_case block "token in commit message" "Add config with $gh_token"
 msg_case allow "clean commit message" "Fix the risk-assessment table"
+d="$(new_repo)"; printf 'Fix the table\n' > "$d/MSG"
+(cd "$d" && PATH="$broken_bin:$PATH" bash "$guard" commit-msg MSG) >/dev/null 2>&1; record block "message scan that cannot run (broken grep, fail closed)" $?
 
 echo "== pre-push"
 push_case block "nothing configured (fail closed)" "https://example.invalid/owner/project.git"
@@ -157,6 +171,12 @@ if [ -z "${GIT_GUARD_UNDER_TEST:-}" ]; then
   bash "$installer" "$d" >/dev/null 2>&1; record block "install refuses to overwrite existing hooks" $?
   d="$(new_repo)"; git -C "$d" config core.hooksPath custom-hooks
   bash "$installer" "$d" >/dev/null 2>&1; record block "install refuses when core.hooksPath is set" $?
+  d="$(new_repo)"; git -C "$d" commit -q --allow-empty -m "Initial commit"
+  w="$(mktemp -d "$scratch/worktree.XXXXXX")"
+  git -C "$d" worktree add -q "$w" -b side >/dev/null 2>&1
+  bash "$installer" "$w" >/dev/null 2>&1; record allow "install from a linked worktree" $?
+  printf 'key = %s\n' "$aws" > "$w/bad.txt"; git -C "$w" add bad.txt
+  git -C "$w" commit -q -m "Add a bad file" >/dev/null 2>&1; record block "hook installed from a worktree blocks a staged secret there" $?
 fi
 
 echo "block_ok=$block_ok allow_ok=$allow_ok failures=$failures"

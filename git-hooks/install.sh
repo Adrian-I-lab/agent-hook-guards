@@ -20,7 +20,9 @@ if [ -n "$(git -C "$target" config --get core.hooksPath 2>/dev/null || true)" ];
   exit 1
 fi
 
-gitdir="$(cd "$target" && cd "$(git rev-parse --git-dir)" && pwd)"
+# The common directory, not --git-dir: in a linked worktree --git-dir points
+# at .git/worktrees/<name>, whose hooks folder git never reads.
+gitdir="$(cd "$target" && cd "$(git rev-parse --git-common-dir)" && pwd)"
 hooks="$gitdir/hooks"
 mkdir -p "$hooks"
 

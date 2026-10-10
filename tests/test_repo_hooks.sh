@@ -74,6 +74,15 @@ ip_cgnat="100.""100.1.2"
 ip_below="100.""63.1.2"
 aws="AK""IA""ABCDEFGHIJKLMNOP"
 
+# A grep that fails whenever it is asked for line numbers (-n), as the scan
+# does, and passes every other call to the real grep. It shows that a scan
+# that cannot run refuses instead of allowing.
+real_grep="$(command -v grep)"
+broken_bin="$scratch/broken-grep"
+mkdir -p "$broken_bin"
+printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = -n ] && exit 2; done\nexec "%s" "$@"\n' "$real_grep" > "$broken_bin/grep"
+chmod +x "$broken_bin/grep"
+
 commit_case block "listed term in content" "$terms" notes.txt "uses $term" "Add notes"
 commit_case block "listed term in a file name" "$terms" "$term.txt" "clean" "Add notes"
 commit_case block "listed term in the message" "$terms" notes.txt "clean" "Mention $term"
@@ -84,6 +93,9 @@ commit_case block "absolute home path" "$terms" notes.txt "see $home_path" "Add 
 commit_case block "list variable unset (fail closed)" "" notes.txt "clean" "Add notes"
 commit_case block "list file missing (fail closed)" "$scratch/missing.txt" notes.txt "clean" "Add notes"
 commit_case block "list holds no terms (fail closed)" "$empty" notes.txt "clean" "Add notes"
+d="$(new_repo)"; printf 'clean\n' > "$d/notes.txt"; git -C "$d" add notes.txt
+PATH="$broken_bin:$PATH" PORTFOLIO_DENYLIST="$terms" git -C "$d" commit -q -m "Add notes" < /dev/null >/dev/null 2>&1
+record block "scan that cannot run (broken grep, fail closed)" $?
 commit_case allow "clean content and message" "$terms" notes.txt "nothing private" "Add notes"
 commit_case allow "address just below 100.64/10" "$terms" notes.txt "host $ip_below" "Add notes"
 commit_case allow "relative and tilde paths" "$terms" notes.txt "see ./data and ~/project" "Add notes"

@@ -87,6 +87,15 @@ scan_home_patterns() {
 PATTERNS
 }
 
+# _scan_grep_ok <grep exit code> <rule-name>
+# grep exits 0 on a match, 1 on none, and 2 or more on an error. An error
+# blocks the commit, or a broken grep would let everything through.
+_scan_grep_ok() {
+  if [ "$1" -gt 1 ]; then
+    scan_fail "grep failed while applying rule '$2' (fail closed)"
+  fi
+}
+
 # _scan_report <rule-name> <grep -n output file> <label-file> <terms-file>
 # Only the line number of each hit is used. The matched text is discarded.
 # A label that itself holds a listed term (a flagged file name) is hidden too.
@@ -95,7 +104,10 @@ _scan_report() {
   while IFS= read -r line; do
     n="${line%%:*}"
     label="$(sed -n "${n}p" "$labels")"
-    if printf '%s\n' "$label" | grep -q -i -F -f "$terms"; then
+    # Show the label only when grep positively finds no listed term in it
+    # (exit 1). A match (0) or a grep error (2) hides it.
+    printf '%s\n' "$label" | grep -q -i -F -f "$terms" 2>/dev/null
+    if [ "$?" -ne 1 ]; then
       label="line ${n} of the scan (its path is itself flagged, so it is not shown)"
     fi
     scan_fail "${label}: matched rule '${rule}' (content not shown)"
@@ -113,22 +125,27 @@ scan_file() {
   hits="$(mktemp "${TMPDIR:-/tmp}/scanhit.XXXXXX")" || { rm -f "$pat"; scan_fail "cannot create a temp file"; return; }
 
   grep -n -i -F -f "$terms" "$content" > "$hits" 2>/dev/null
+  _scan_grep_ok "$?" "private term list"
   _scan_report "private term list" "$hits" "$labels" "$terms"
 
   scan_secret_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
+  _scan_grep_ok "$?" "secret pattern"
   _scan_report "secret pattern" "$hits" "$labels" "$terms"
 
   scan_assignment_patterns > "$pat"
   grep -n -E -i -f "$pat" "$content" > "$hits" 2>/dev/null
+  _scan_grep_ok "$?" "secret assignment"
   _scan_report "secret assignment" "$hits" "$labels" "$terms"
 
   scan_ip_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
+  _scan_grep_ok "$?" "private IP address"
   _scan_report "private IP address" "$hits" "$labels" "$terms"
 
   scan_home_patterns > "$pat"
   grep -n -E -f "$pat" "$content" > "$hits" 2>/dev/null
+  _scan_grep_ok "$?" "absolute home path"
   _scan_report "absolute home path" "$hits" "$labels" "$terms"
 
   rm -f "$pat" "$hits"

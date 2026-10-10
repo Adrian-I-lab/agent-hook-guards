@@ -76,11 +76,17 @@ load_denylist() {
 }
 
 # scan <content-file> <label-file> <workdir>. Prints a line per hit, returns
-# 1 if anything matched.
+# 1 if anything matched, 2 if the scan itself could not run.
 scan() {
   local content="$1" labels="$2" work="$3" found=0 status line n
   secret_patterns > "$work/patterns"
+  # grep exits 0 on a match, 1 on none, and 2 or more on an error. An error
+  # must refuse, or a broken grep would let everything through.
   grep -n -E -f "$work/patterns" "$content" > "$work/hits" 2>/dev/null
+  if [ "$?" -gt 1 ]; then
+    say "grep failed while scanning for secrets."
+    return 2
+  fi
   load_denylist "$work/terms"
   status=$?
   if [ "$status" -eq 2 ]; then
@@ -88,6 +94,10 @@ scan() {
   fi
   if [ "$status" -eq 0 ]; then
     grep -n -i -F -f "$work/terms" "$content" >> "$work/hits" 2>/dev/null
+    if [ "$?" -gt 1 ]; then
+      say "grep failed while scanning for listed terms."
+      return 2
+    fi
   fi
   while IFS= read -r line; do
     n="${line%%:*}"
@@ -127,7 +137,7 @@ mode_pre_commit() {
   scan "$work/content" "$work/labels" "$work"
   case $? in
     0) ;;
-    2) refuse "denylist configured but unusable (fail closed)" ;;
+    2) refuse "the scan could not run, or the denylist is unusable (fail closed)" ;;
     *) rc=1 ;;
   esac
   [ "$rc" -eq 0 ] || refuse "staged content looks like a secret or a private term. Remove it from the commit."
@@ -144,7 +154,7 @@ mode_commit_msg() {
   scan "$work/content" "$work/labels" "$work"
   case $? in
     0) exit 0 ;;
-    2) refuse "denylist configured but unusable (fail closed)" ;;
+    2) refuse "the scan could not run, or the denylist is unusable (fail closed)" ;;
     *) refuse "the commit message looks like it holds a secret or a private term." ;;
   esac
 }
