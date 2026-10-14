@@ -315,7 +315,6 @@ The figure above is a committed copy of `examples/injection_map/out/injection_ma
 What the map does and does not show:
 
 - Injections and hard negatives separate partly along PC1. A silhouette of 0.074 in 20-PC space is weak separation. The 2D values are higher because two dimensions discard most of the variance, so they flatter the picture.
-- [Guessing] Part of the separation may come from surface features the injections share, such as the fake canary string, rather than from the instruction itself. This has not been tested.
 - Encoded items of both labels sit together, because the embedding sees base64 and hex as similar text whatever they decode to.
 - A map is a picture for exploration, not a detector. No classifier is trained or scored here.
 
